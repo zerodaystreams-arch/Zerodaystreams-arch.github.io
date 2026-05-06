@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS // Admin Control Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c10;
+    --panel: #0d1117;
+    --border: #1c2a3a;
+    --accent: #00e5ff;
+    --accent2: #ff3c5a;
+    --green: #00ff88;
+    --muted: #3a5068;
+    --text: #c8d8e8;
+    --glow: 0 0 12px rgba(0,229,255,0.4);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ============ LOGIN SCREEN ============ */
+  #login-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .login-box {
+    border: 1px solid var(--accent);
+    padding: 48px 52px;
+    width: 420px;
+    position: relative;
+    box-shadow: 0 0 40px rgba(0,229,255,0.12), inset 0 0 40px rgba(0,229,255,0.03);
+    background: var(--panel);
+  }
+
+  .login-box::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 24px;
+    width: 80px; height: 2px;
+    background: var(--bg);
+  }
+
+  .login-corner {
+    position: absolute;
+    width: 12px; height: 12px;
+    border-color: var(--accent);
+    border-style: solid;
+  }
+  .login-corner.tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+  .login-corner.tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+  .login-corner.bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+  .login-corner.br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+  .login-logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 22px;
+    font-weight: 900;
+    color: var(--accent);
+    letter-spacing: 6px;
+    text-align: center;
+    margin-bottom: 6px;
+    text-shadow: var(--glow);
+  }
+
+  .login-sub {
+    text-align: center;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 3px;
+    margin-bottom: 36px;
+  }
+
+  .login-label {
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .login-input {
+    width: 100%;
+    background: rgba(0,229,255,0.04);
+    border: 1px solid var(--muted);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    letter-spacing: 1px;
+  }
+
+  .login-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 8px rgba(0,229,255,0.2);
+  }
+
+  .login-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Orbitron', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    padding: 13px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .login-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    transform: translateX(-100%);
+    transition: transform 0.25s;
+    z-index: 0;
+  }
+
+  .login-btn:hover::before { transform: translateX(0); }
+  .login-btn:hover { color: var(--bg); }
+  .login-btn span { position: relative; z-index: 1; }
+
+  .login-error {
+    text-align: center;
+    font-size: 11px;
+    color: var(--accent2);
+    margin-top: 14px;
+    letter-spacing: 1px;
+    min-height: 16px;
+    transition: opacity 0.2s;
+  }
+
+  /* ============ DASHBOARD ============ */
+  #dashboard {
+    display: none;
+    min-height: 100vh;
+  }
+
+  /* Topbar */
+  .topbar {
+    height: 56px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 28px;
+    gap: 24px;
+    background: var(--panel);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .topbar-logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    font-weight: 900;
+    color: var(--accent);
+    letter-spacing: 4px;
+    text-shadow: var(--glow);
+    white-space: nowrap;
+  }
+
+  .topbar-divider { width: 1px; height: 24px; background: var(--border); }
+
+  .topbar-tag {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 2px;
+  }
+
+  .topbar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--green);
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .user-badge {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+  }
+
+  .logout-btn {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--accent2);
+    background: none;
+    border: 1px solid var(--accent2);
+    padding: 4px 12px;
+    cursor: pointer;
+    font-family: 'Orbitron', monospace;
+    transition: all 0.2s;
+  }
+  .logout-btn:hover { background: var(--accent2); color: var(--bg); }
+
+  /* Layout */
+  .layout {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    min-height: calc(100vh - 56px);
+  }
+
+  /* Sidebar */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--panel);
+    padding: 24px 0;
+  }
+
+  .sidebar-section {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 3px;
+    padding: 0 20px 10px;
+    margin-top: 16px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    border-left: 2px solid transparent;
+  }
+
+  .nav-item:hover { color: var(--text); background: rgba(0,229,255,0.04); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(0,229,255,0.06); }
+
+  .nav-icon { font-size: 13px; width: 16px; text-align: center; }
+
+  /* Main content */
+  .main {
+    padding: 32px 36px;
+    background: var(--bg);
+  }
+
+  .page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 28px;
+  }
+
+  .page-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 3px;
+  }
+
+  .page-subtitle {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    margin-top: 4px;
+  }
+
+  .timestamp {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    border: 1px solid var(--border);
+    padding: 20px;
+    background: var(--panel);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 2px;
+    height: 100%;
+    background: var(--accent);
+    opacity: 0.4;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .stat-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .stat-change {
+    font-size: 9px;
+    color: var(--green);
+    margin-top: 4px;
+    letter-spacing: 1px;
+  }
+
+  /* Grid */
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+  }
+
+  .panel {
+    border: 1px solid var(--border);
+    background: var(--panel);
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-title {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+  }
+
+  .panel-badge {
+    font-size: 9px;
+    background: rgba(0,229,255,0.1);
+    border: 1px solid rgba(0,229,255,0.2);
+    color: var(--accent);
+    padding: 2px 8px;
+    letter-spacing: 1px;
+  }
+
+  .panel-body { padding: 20px; }
+
+  /* Log items */
+  .log-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(28,42,58,0.5);
+    font-size: 11px;
+  }
+
+  .log-item:last-child { border-bottom: none; }
+
+  .log-time { color: var(--muted); white-space: nowrap; font-size: 10px; min-width: 52px; }
+  .log-msg { color: var(--text); letter-spacing: 0.5px; }
+  .log-type { font-size: 9px; padding: 1px 6px; letter-spacing: 1px; border: 1px solid; white-space: nowrap; }
+  .log-type.info { color: var(--accent); border-color: rgba(0,229,255,0.3); }
+  .log-type.warn { color: #ffcc00; border-color: rgba(255,204,0,0.3); }
+  .log-type.err { color: var(--accent2); border-color: rgba(255,60,90,0.3); }
+  .log-type.ok { color: var(--green); border-color: rgba(0,255,136,0.3); }
+
+  /* ============ BUG BUTTON ============ */
+  .bug-card {
+    border: 1px solid var(--border);
+    background: var(--panel);
+    padding: 24px;
+    margin-top: 20px;
+    grid-column: 1 / -1;
+  }
+
+  .bug-section-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--accent2);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .bug-section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, rgba(255,60,90,0.3), transparent);
+  }
+
+  .bug-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .bug-desc {
+    flex: 1;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    line-height: 1.7;
+  }
+
+  .bug-btn {
+    background: transparent;
+    border: 1px solid var(--accent2);
+    color: var(--accent2);
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    padding: 14px 28px;
+    cursor: pointer;
+    white-space: nowrap;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s;
+    text-shadow: 0 0 8px rgba(255,60,90,0.5);
+    box-shadow: 0 0 12px rgba(255,60,90,0.15);
+  }
+
+  .bug-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent2);
+    transform: translateX(-100%);
+    transition: transform 0.25s;
+    z-index: 0;
+  }
+
+  .bug-btn:hover:not(:disabled)::before { transform: translateX(0); }
+  .bug-btn:hover:not(:disabled) { color: var(--bg); text-shadow: none; }
+  .bug-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .bug-btn span { position: relative; z-index: 1; }
+
+  /* Loading animation */
+  #loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(8,12,16,0.96);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    gap: 28px;
+  }
+
+  #loading-overlay.active { display: flex; }
+
+  .loading-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent2);
+    letter-spacing: 5px;
+    text-shadow: 0 0 16px rgba(255,60,90,0.6);
+    animation: flicker 1.8s infinite;
+  }
+
+  @keyframes flicker {
+    0%, 92%, 100% { opacity: 1; }
+    94% { opacity: 0.3; }
+    96% { opacity: 1; }
+    98% { opacity: 0.2; }
+  }
+
+  .loading-bar-wrap {
+    width: 360px;
+    height: 3px;
+    background: rgba(255,60,90,0.1);
+    border: 1px solid rgba(255,60,90,0.2);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .loading-bar-fill {
+    height: 100%;
+    background: var(--accent2);
+    box-shadow: 0 0 8px var(--accent2);
+    width: 0%;
+    transition: width 0.1s linear;
+  }
+
+  .loading-spinner {
+    width: 64px;
+    height: 64px;
+    position: relative;
+  }
+
+  .spinner-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid transparent;
+  }
+
+  .spinner-ring:nth-child(1) {
+    border-top-color: var(--accent2);
+    animation: spin 1s linear infinite;
+  }
+
+  .spinner-ring:nth-child(2) {
+    inset: 8px;
+    border-right-color: rgba(255,60,90,0.5);
+    animation: spin 1.4s linear infinite reverse;
+  }
+
+  .spinner-ring:nth-child(3) {
+    inset: 16px;
+    border-bottom-color: rgba(255,60,90,0.3);
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-log {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-align: center;
+    line-height: 1.8;
+    max-width: 360px;
+  }
+
+  .loading-log span { color: var(--accent2); }
+
+  .loading-pct {
+    font-family: 'Orbitron', monospace;
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--accent2);
+    letter-spacing: 2px;
+    text-shadow: 0 0 20px rgba(255,60,90,0.5);
+  }
+
+  /* Glitch effect on logo during loading */
+  @keyframes glitch {
+    0%, 90%, 100% { clip-path: none; transform: none; }
+    91% { clip-path: inset(20% 0 60% 0); transform: translateX(-4px); }
+    93% { clip-path: inset(60% 0 10% 0); transform: translateX(4px); }
+    95% { clip-path: inset(40% 0 40% 0); transform: translateX(-2px); }
+    97% { clip-path: none; transform: none; }
+  }
+
+  .loading-glitch {
+    font-family: 'Orbitron', monospace;
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--accent2);
+    letter-spacing: 8px;
+    position: relative;
+  }
+
+  .loading-glitch::before,
+  .loading-glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    left: 0; top: 0;
+    width: 100%;
+  }
+
+  .loading-glitch::before {
+    color: #00e5ff;
+    animation: glitch 2s infinite;
+    animation-delay: 0.1s;
+    opacity: 0.7;
+  }
+
+  .loading-glitch::after {
+    color: #ff3c5a;
+    animation: glitch 2s infinite;
+    animation-delay: 0.3s;
+    opacity: 0.7;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN SCREEN ============ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-corner tl"></div>
+    <div class="login-corner tr"></div>
+    <div class="login-corner bl"></div>
+    <div class="login-corner br"></div>
+    <div class="login-logo">NEXUS</div>
+    <div class="login-sub">ADMIN CONTROL SYSTEM // v4.2.1</div>
+    <label class="login-label">USERNAME</label>
+    <input class="login-input" type="text" id="user-input" placeholder="enter username..." autocomplete="off">
+    <label class="login-label">PASSWORD</label>
+    <input class="login-input" type="password" id="pass-input" placeholder="enter password...">
+    <button class="login-btn" onclick="doLogin()"><span>AUTHENTICATE</span></button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ============ LOADING OVERLAY ============ -->
+<div id="loading-overlay">
+  <div class="loading-glitch" data-text="DEPLOYING BUG">DEPLOYING BUG</div>
+  <div class="loading-spinner">
+    <div class="spinner-ring"></div>
+    <div class="spinner-ring"></div>
+    <div class="spinner-ring"></div>
+  </div>
+  <div class="loading-pct" id="loading-pct">0%</div>
+  <div class="loading-bar-wrap">
+    <div class="loading-bar-fill" id="loading-bar"></div>
+  </div>
+  <div class="loading-log" id="loading-log">
+    Initializing payload...
+  </div>
+</div>
+
+<!-- ============ DASHBOARD ============ -->
+<div id="dashboard">
+  <div class="topbar">
+    <div class="topbar-logo">NEXUS</div>
+    <div class="topbar-divider"></div>
+    <div class="topbar-tag">ADMIN CONTROL PANEL</div>
+    <div class="topbar-right">
+      <div class="status-pill"><div class="status-dot"></div>SYSTEMS NOMINAL</div>
+      <div class="user-badge" id="user-badge">USER: —</div>
+      <button class="logout-btn" onclick="doLogout()">LOGOUT</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-section">NAVIGATION</div>
+      <div class="nav-item active"><span class="nav-icon">▣</span> OVERVIEW</div>
+      <div class="nav-item"><span class="nav-icon">⬡</span> USERS</div>
+      <div class="nav-item"><span class="nav-icon">◈</span> ANALYTICS</div>
+      <div class="nav-item"><span class="nav-icon">⬖</span> LOGS</div>
+      <div class="sidebar-section">SYSTEM</div>
+      <div class="nav-item"><span class="nav-icon">◉</span> SETTINGS</div>
+      <div class="nav-item"><span class="nav-icon">⬢</span> SECURITY</div>
+      <div class="nav-item"><span class="nav-icon">⊛</span> NETWORK</div>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+      <div class="page-header">
+        <div>
+          <div class="page-title">SYSTEM OVERVIEW</div>
+          <div class="page-subtitle">REAL-TIME CONTROL DASHBOARD</div>
+        </div>
+        <div class="timestamp" id="clock">--:--:-- UTC</div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">ACTIVE USERS</div>
+          <div class="stat-val">1,284</div>
+          <div class="stat-change">▲ +3.2% TODAY</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">SERVER LOAD</div>
+          <div class="stat-val">42%</div>
+          <div class="stat-change">▼ STABLE</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">REQUESTS / SEC</div>
+          <div class="stat-val">8.7K</div>
+          <div class="stat-change">▲ NORMAL</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">UPTIME</div>
+          <div class="stat-val">99.9%</div>
+          <div class="stat-change">▲ 43 DAYS</div>
+        </div>
+      </div>
+
+      <!-- Content grid -->
+      <div class="content-grid">
+        <!-- Activity log -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">ACTIVITY LOG</div>
+            <div class="panel-badge">LIVE</div>
+          </div>
+          <div class="panel-body">
+            <div class="log-item">
+              <span class="log-time">14:02:11</span>
+              <span class="log-type ok">OK</span>
+              <span class="log-msg">Auth token refreshed for session #4821</span>
+            </div>
+            <div class="log-item">
+              <span class="log-time">14:01:48</span>
+              <span class="log-type warn">WARN</span>
+              <span class="log-msg">Rate limit threshold at 80% — node-03</span>
+            </div>
+            <div class="log-item">
+              <span class="log-time">14:00:33</span>
+              <span class="log-type info">INFO</span>
+              <span class="log-msg">Backup snapshot completed successfully</span>
+            </div>
+            <div class="log-item">
+              <span class="log-time">13:58:07</span>
+              <span class="log-type err">ERR</span>
+              <span class="log-msg">Connection timeout: db-replica-02 unreachable</span>
+            </div>
+            <div class="log-item">
+              <span class="log-time">13:55:21</span>
+              <span class="log-type ok">OK</span>
+              <span class="log-msg">Deploy v4.2.1 pushed to production cluster</span>
+            </div>
+            <div class="log-item">
+              <span class="log-time">13:52:00</span>
+              <span class="log-type info">INFO</span>
+              <span class="log-msg">Scheduled maintenance window registered</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Side panel -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">NODES</div>
+              <div class="panel-badge">4/4 UP</div>
+            </div>
+            <div class="panel-body">
+              <div class="log-item"><span class="log-time">node-01</span><span class="log-type ok">ONLINE</span></div>
+              <div class="log-item"><span class="log-time">node-02</span><span class="log-type ok">ONLINE</span></div>
+              <div class="log-item"><span class="log-time">node-03</span><span class="log-type warn">HIGH</span></div>
+              <div class="log-item"><span class="log-time">node-04</span><span class="log-type ok">ONLINE</span></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">ALERTS</div>
+              <div class="panel-badge">2 ACTIVE</div>
+            </div>
+            <div class="panel-body">
+              <div class="log-item"><span class="log-type warn">WARN</span><span class="log-msg">Disk usage &gt; 75% on node-03</span></div>
+              <div class="log-item"><span class="log-type err">ERR</span><span class="log-msg">Replica lag detected</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bug button card -->
+        <div class="bug-card" style="grid-column:1/-1;">
+          <div class="bug-section-label">⬡ EXPLOIT MODULE</div>
+          <div class="bug-row">
+            <div class="bug-desc">
+              Deploys the staged payload across all active nodes. Once activated, the process cannot be interrupted. Ensure all systems are backed up before proceeding.<br>
+              <span style="color:var(--accent2);font-size:10px;letter-spacing:1px;">⚠ RESTRICTED — ADMIN CLEARANCE REQUIRED</span>
+            </div>
+            <button class="bug-btn" id="bug-btn" onclick="activateBug()"><span>⬡ ACTIVATE NOW</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ============ CREDENTIALS (set these directly) ============
+  const ADMIN_USERNAME = "admin";
+  const ADMIN_PASSWORD = "nexus2026";
+  // =========================================================
+
+  function doLogin() {
+    const u = document.getElementById('user-input').value.trim();
+    const p = document.getElementById('pass-input').value;
+    const err = document.getElementById('login-error');
+
+    if (u === ADMIN_USERNAME && p === ADMIN_PASSWORD) {
+      err.textContent = '';
+      document.getElementById('login-screen').style.opacity = '0';
+      document.getElementById('login-screen').style.transition = 'opacity 0.4s';
+      document.getElementById('user-badge').textContent = `USER: ${u.toUpperCase()}`;
+      setTimeout(() => {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+      }, 420);
+    } else {
+      err.textContent = '// ACCESS DENIED — INVALID CREDENTIALS';
+      document.getElementById('pass-input').value = '';
+      document.getElementById('pass-input').style.borderColor = 'var(--accent2)';
+      setTimeout(() => {
+        document.getElementById('pass-input').style.borderColor = '';
+      }, 1200);
+    }
+  }
+
+  // Allow Enter key
+  document.getElementById('pass-input').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  document.getElementById('user-input').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+  function doLogout() {
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('login-screen').style.opacity = '1';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('user-input').value = '';
+    document.getElementById('pass-input').value = '';
+    document.getElementById('login-error').textContent = '';
+  }
+
+  // Clock
+  function updateClock() {
+    const now = new Date();
+    const h = String(now.getUTCHours()).padStart(2, '0');
+    const m = String(now.getUTCMinutes()).padStart(2, '0');
+    const s = String(now.getUTCSeconds()).padStart(2, '0');
+    document.getElementById('clock').textContent = `${h}:${m}:${s} UTC`;
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // Bug button
+  const LOADING_STEPS = [
+    'Initializing payload module...',
+    'Injecting exploit vector <span>0x4A2F</span>...',
+    'Bypassing firewall rules...',
+    'Establishing encrypted tunnel...',
+    'Scanning node vulnerabilities...',
+    'Deploying payload to <span>node-01</span>...',
+    'Deploying payload to <span>node-02</span>...',
+    'Deploying payload to <span>node-03</span>...',
+    'Deploying payload to <span>node-04</span>...',
+    'Finalizing exploit chain...',
+    'Execution complete. Awaiting response...',
+  ];
+
+  function activateBug() {
+    const overlay = document.getElementById('loading-overlay');
+    const bar = document.getElementById('loading-bar');
+    const pct = document.getElementById('loading-pct');
+    const log = document.getElementById('loading-log');
+    const btn = document.getElementById('bug-btn');
+
+    btn.disabled = true;
+    overlay.classList.add('active');
+
+    let progress = 0;
+    let stepIdx = 0;
+
+    const interval = setInterval(() => {
+      progress += Math.random() * 4 + 1;
+      if (progress > 100) progress = 100;
+
+      bar.style.width = progress + '%';
+      pct.textContent = Math.floor(progress) + '%';
+
+      const newStep = Math.floor((progress / 100) * LOADING_STEPS.length);
+      if (newStep !== stepIdx && newStep < LOADING_STEPS.length) {
+        stepIdx = newStep;
+        log.innerHTML = LOADING_STEPS[stepIdx];
+      }
+
+      if (progress >= 100) {
+        clearInterval(interval);
+        log.innerHTML = '<span>PAYLOAD DEPLOYED SUCCESSFULLY</span>';
+        setTimeout(() => {
+          overlay.classList.remove('active');
+          bar.style.width = '0%';
+          pct.textContent = '0%';
+          log.innerHTML = 'Initializing payload...';
+          btn.disabled = false;
+        }, 1800);
+      }
+    }, 80);
+  }
+</script>
+</body>
+</html>
